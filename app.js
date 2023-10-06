@@ -1,87 +1,76 @@
 const path = require('path');
-const express = require('express'),
-  app = express(),
-  puppeteer = require('puppeteer');
+const express = require('express');
+const puppeteer = require('puppeteer');
 
-app.get("/", async (request, response) => {
+const app = express();
+const port = 5000;
+
+const puppeteerLaunchOptions = {
+  args: ['--no-sandbox'],
+};
+
+const captureScreenshot = async (url, viewportWidth, viewportHeight) => {
   try {
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox']
-    });
+    const browser = await puppeteer.launch(puppeteerLaunchOptions);
     const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 1024 });
-    await page.goto(request.query.url, {
-      waitUntil: "networkidle2",
-      timeout: 0
+    await page.setViewport({ width: viewportWidth, height: viewportHeight });
+    await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: 0,
     });
 
     const image = await page.screenshot({
       path: 'screenshot_full.jpg',
       fullPage: true,
-      delay: '500ms'
+      delay: '500ms',
     });
 
     await browser.close();
-    response.set('Content-Type', 'image/png');
-    response.send(image);
+    return image;
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    throw error;
   }
-});
+};
 
-app.get("/soil", async (request, response) => {
+app.get('/', async (req, res) => {
+  const url = req.query.url;
+  if (!url) {
+    res.status(400).send('Missing URL query parameter.');
+    return;
+  }
+
   try {
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 1400 });
-    await page.goto('https://nodered.denoodev.com/ui/#!/1?socketid=fmH2JUlerO7KcBXzAAEU', {
-      waitUntil: "networkidle2",
-      timeout: 0
-    });
-
-    const image = await page.screenshot({
-      path: 'screenshot_full.jpg',
-      fullPage: true,
-      delay: '500ms'
-    });
-
-    await browser.close();
-    response.set('Content-Type', 'image/png');
-    response.send(image);
+    const image = await captureScreenshot(url, 1440, 1024);
+    res.contentType('image/png');
+    res.send(image);
   } catch (error) {
-    console.log(error);
+    res.status(500).send('Error capturing screenshot.');
   }
 });
 
-app.get("/weather", async (request, response) => {
+app.get('/soil', async (req, res) => {
+  const url = 'https://nodered.denoodev.com/ui/#!/1?socketid=fmH2JUlerO7KcBXzAAEU';
   try {
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 1024 });
-    await page.goto("https://nodered.denoodev.com/ui/#!/0?socketid=fmH2JUlerO7KcBXzAAEU", {
-      waitUntil: "networkidle2",
-      timeout: 0
-    });
-
-
-    const image = await page.screenshot({
-      path: 'screenshot_full.jpg',
-      fullPage: true,
-      delay: '500ms'
-    });
-
-    await browser.close();
-    response.set('Content-Type', 'image/png');
-    response.send(image);
+    const image = await captureScreenshot(url, 1440, 1400);
+    res.contentType('image/png');
+    res.send(image);
   } catch (error) {
-    console.log(error);
+    res.status(500).send('Error capturing screenshot.');
   }
 });
 
-var listener = app.listen(5000, function () {
-  console.log('Your app is listening on port ' + listener.address().port);
+app.get('/weather', async (req, res) => {
+  const url = 'https://nodered.denoodev.com/ui/#!/0?socketid=fmH2JUlerO7KcBXzAAEU';
+  try {
+    const image = await captureScreenshot(url, 1440, 1024);
+    res.contentType('image/png');
+    res.send(image);
+  } catch (error) {
+    res.status(500).send('Error capturing screenshot.');
+  }
+});
+
+const server = app.listen(port, () => {
+  console.log(`Your app is listening on port ${port}`);
 });
