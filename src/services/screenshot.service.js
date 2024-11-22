@@ -1,12 +1,20 @@
 const browserService = require('./browser.service');
+const { logger } = require('../config/logger.config');
 
 class ScreenshotService {
   async captureScreenshot(url, viewportWidth, viewportHeight) {
+    const startTime = Date.now();
+    logger.info('Starting screenshot capture', {
+      url,
+      viewport: { width: viewportWidth, height: viewportHeight }
+    });
+
     const browser = await browserService.getBrowser();
     let page;
 
     try {
       page = await browser.newPage();
+      logger.debug('New page created');
       
       await page.setViewport({ 
         width: viewportWidth, 
@@ -38,13 +46,28 @@ class ScreenshotService {
         optimizeForSpeed: true,
       });
 
+      const duration = Date.now() - startTime;
+      logger.info('Screenshot captured successfully', {
+        url,
+        duration: `${duration}ms`,
+        screenshotSize: `${screenshot.length} bytes`
+      });
+
       return screenshot;
     } catch (error) {
-      console.error(`Screenshot capture failed for ${url}:`, error);
+      logger.error('Screenshot capture failed', {
+        url,
+        error: {
+          message: error.message,
+          stack: error.stack
+        },
+        duration: `${Date.now() - startTime}ms`
+      });
       throw error;
     } finally {
       if (page) {
         await page.close();
+        logger.debug('Page closed');
       }
     }
   }
